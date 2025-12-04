@@ -80,6 +80,25 @@ impl Drop for TerminalContext {
     }
 }
 
+pub struct Canvas {
+    buffer: Vec<bool>,
+    pub height: usize,
+    pub width: usize,
+}
+
+impl Canvas {
+    pub fn new(ctx: &TerminalContext) -> Result<Self, io::Error> {
+        let (columns, rows) = terminal::size()?;
+        let (width, height) = (columns as usize, rows as usize * 2);
+        let buffer: Vec<bool> = vec![false; width * height];
+        Ok(Self {
+            buffer,
+            width,
+            height,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
