@@ -100,6 +100,16 @@ impl Canvas {
             height,
         }
     }
+
+    pub fn put_pixel(&mut self, x: usize, y: usize) -> bool {
+        let index = self.width * y + x;
+        if let Some(pixel) = self.buffer.get_mut(index) {
+            *pixel = true;
+        } else {
+            return false;
+        };
+        true
+    }
 }
 
 #[cfg(test)]
