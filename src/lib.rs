@@ -1,5 +1,5 @@
 use crossterm::{cursor, queue, terminal};
-use std::io::{self, Write};
+use std::io::{self, BufWriter, Stdout, Write};
 
 pub struct WindowSetup {
     capture_keyboard: bool,
@@ -36,46 +36,46 @@ pub struct TerminalContext {
     raw_mode: bool,
     alternate_screen: bool,
     hide_cursor: bool,
+    writer: BufWriter<Stdout>,
 }
 
 impl TerminalContext {
     /// Creates a new context for the terminal
     /// with the settings specified in setup
     pub fn new(setup: WindowSetup) -> Result<Self, io::Error> {
-        let mut stdout = io::stdout();
         let mut ctx = Self {
             raw_mode: false,
             alternate_screen: false,
             hide_cursor: false,
+            writer: BufWriter::new(io::stdout()),
         };
         if setup.capture_keyboard {
             terminal::enable_raw_mode()?;
             ctx.raw_mode = true;
         }
         if setup.alternate_screen {
-            queue!(stdout, terminal::EnterAlternateScreen)?;
+            queue!(ctx.writer, terminal::EnterAlternateScreen)?;
             ctx.alternate_screen = true;
         }
         if setup.hide_cursor {
-            queue!(stdout, cursor::Hide)?;
+            queue!(ctx.writer, cursor::Hide)?;
             ctx.hide_cursor = true;
         }
-        stdout.flush()?;
+        ctx.writer.flush()?;
         Ok(ctx)
     }
 }
 
 impl Drop for TerminalContext {
     fn drop(&mut self) {
-        let mut stdout = io::stdout();
         if self.raw_mode {
             let _ = terminal::disable_raw_mode();
         }
         if self.alternate_screen {
-            let _ = queue!(stdout, terminal::LeaveAlternateScreen);
+            let _ = queue!(self.writer, terminal::LeaveAlternateScreen);
         }
         if self.hide_cursor {
-            let _ = queue!(stdout, cursor::Show);
+            let _ = queue!(self.writer, cursor::Show);
         }
     }
 }
