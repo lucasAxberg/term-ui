@@ -1,5 +1,83 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use crossterm::{cursor, queue, terminal};
+use std::io::{self, Write};
+
+pub struct WindowSetup {
+    capture_keyboard: bool,
+    alternate_screen: bool,
+    hide_cursor: bool,
+}
+
+impl WindowSetup {
+    pub fn default() -> Self {
+        WindowSetup {
+            capture_keyboard: true,
+            alternate_screen: true,
+            hide_cursor: true,
+        }
+    }
+
+    pub fn hide_cursor(mut self, hide: bool) -> Self {
+        self.hide_cursor = hide;
+        return self;
+    }
+
+    pub fn capture_keyboard(mut self, capture: bool) -> Self {
+        self.capture_keyboard = capture;
+        return self;
+    }
+
+    pub fn alternate_screen(mut self, use_alternate: bool) -> Self {
+        self.alternate_screen = use_alternate;
+        return self;
+    }
+}
+
+pub struct TerminalContext {
+    raw_mode: bool,
+    alternate_screen: bool,
+    hide_cursor: bool,
+}
+
+impl TerminalContext {
+    /// Creates a new context for the terminal
+    /// with the settings specified in setup
+    pub fn new(setup: WindowSetup) -> Result<Self, io::Error> {
+        let mut stdout = io::stdout();
+        let mut ctx = Self {
+            raw_mode: false,
+            alternate_screen: false,
+            hide_cursor: false,
+        };
+        if setup.capture_keyboard {
+            terminal::enable_raw_mode()?;
+            ctx.raw_mode = true;
+        }
+        if setup.alternate_screen {
+            queue!(stdout, terminal::EnterAlternateScreen)?;
+            ctx.alternate_screen = true;
+        }
+        if setup.hide_cursor {
+            queue!(stdout, cursor::Hide)?;
+            ctx.hide_cursor = true;
+        }
+        stdout.flush()?;
+        Ok(ctx)
+    }
+}
+
+impl Drop for TerminalContext {
+    fn drop(&mut self) {
+        let mut stdout = io::stdout();
+        if self.raw_mode {
+            let _ = terminal::disable_raw_mode();
+        }
+        if self.alternate_screen {
+            let _ = queue!(stdout, terminal::LeaveAlternateScreen);
+        }
+        if self.hide_cursor {
+            let _ = queue!(stdout, cursor::Show);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -7,8 +85,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+    fn raw_mode_supported() {
+        let _ = TerminalContext::new(
+            WindowSetup::default()
+                .hide_cursor(false)
+                .alternate_screen(false),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn alternate_screen_supported() {
+        let _ = TerminalContext::new(
+            WindowSetup::default()
+                .hide_cursor(false)
+                .capture_keyboard(false),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn hide_cursor_supported() {
+        let _ = TerminalContext::new(
+            WindowSetup::default()
+                .alternate_screen(false)
+                .capture_keyboard(false),
+        )
+        .unwrap();
     }
 }
