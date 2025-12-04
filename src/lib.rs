@@ -43,21 +43,25 @@ impl TerminalContext {
     /// with the settings specified in setup
     pub fn new(setup: WindowSetup) -> Result<Self, io::Error> {
         let mut stdout = io::stdout();
+        let mut ctx = Self {
+            raw_mode: false,
+            alternate_screen: false,
+            hide_cursor: false,
+        };
         if setup.capture_keyboard {
             terminal::enable_raw_mode()?;
+            ctx.raw_mode = true;
         }
         if setup.alternate_screen {
             queue!(stdout, terminal::EnterAlternateScreen)?;
+            ctx.alternate_screen = true;
         }
         if setup.hide_cursor {
             queue!(stdout, cursor::Hide)?;
+            ctx.hide_cursor = true;
         }
         stdout.flush()?;
-        return Ok(Self {
-            raw_mode: setup.capture_keyboard,
-            alternate_screen: setup.alternate_screen,
-            hide_cursor: setup.hide_cursor,
-        });
+        Ok(ctx)
     }
 }
 
