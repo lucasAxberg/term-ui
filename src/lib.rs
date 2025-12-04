@@ -4,7 +4,7 @@ use std::io::{self, Write};
 pub struct WindowSetup {
     capture_keyboard: bool,
     alternate_screen: bool,
-    show_cursor: bool,
+    hide_cursor: bool,
 }
 
 impl WindowSetup {
@@ -12,12 +12,12 @@ impl WindowSetup {
         WindowSetup {
             capture_keyboard: true,
             alternate_screen: true,
-            show_cursor: false,
+            hide_cursor: true,
         }
     }
 
-    pub fn show_cursor(mut self, show: bool) -> Self {
-        self.show_cursor = show;
+    pub fn hide_cursor(mut self, hide: bool) -> Self {
+        self.hide_cursor = hide;
         return self;
     }
 
@@ -35,7 +35,7 @@ impl WindowSetup {
 pub struct TerminalContext {
     raw_mode: bool,
     alternate_screen: bool,
-    show_cursor: bool,
+    hide_cursor: bool,
 }
 
 impl TerminalContext {
@@ -49,14 +49,14 @@ impl TerminalContext {
         if setup.alternate_screen {
             queue!(stdout, terminal::EnterAlternateScreen)?;
         }
-        if setup.show_cursor == false {
+        if setup.hide_cursor {
             queue!(stdout, cursor::Hide)?;
         }
         stdout.flush()?;
         return Ok(Self {
             raw_mode: setup.capture_keyboard,
             alternate_screen: setup.alternate_screen,
-            show_cursor: setup.show_cursor,
+            hide_cursor: setup.hide_cursor,
         });
     }
 }
@@ -70,7 +70,7 @@ impl Drop for TerminalContext {
         if self.alternate_screen {
             let _ = queue!(stdout, terminal::LeaveAlternateScreen);
         }
-        if self.show_cursor == false {
+        if self.hide_cursor {
             let _ = queue!(stdout, cursor::Show);
         }
     }
@@ -84,7 +84,7 @@ mod tests {
     fn raw_mode_supported() {
         let _ = TerminalContext::new(
             WindowSetup::default()
-                .show_cursor(true)
+                .hide_cursor(false)
                 .alternate_screen(false),
         )
         .unwrap();
@@ -94,7 +94,7 @@ mod tests {
     fn alternate_screen_supported() {
         let _ = TerminalContext::new(
             WindowSetup::default()
-                .show_cursor(true)
+                .hide_cursor(false)
                 .capture_keyboard(false),
         )
         .unwrap();
@@ -104,7 +104,6 @@ mod tests {
     fn hide_cursor_supported() {
         let _ = TerminalContext::new(
             WindowSetup::default()
-                .show_cursor(false)
                 .alternate_screen(false)
                 .capture_keyboard(false),
         )
