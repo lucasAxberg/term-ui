@@ -37,6 +37,7 @@ pub struct TerminalContext {
     alternate_screen: bool,
     hide_cursor: bool,
     writer: BufWriter<Stdout>,
+    size: (u16, u16),
 }
 
 impl TerminalContext {
@@ -48,7 +49,9 @@ impl TerminalContext {
             alternate_screen: false,
             hide_cursor: false,
             writer: BufWriter::new(io::stdout()),
+            size: (0, 0),
         };
+        ctx.size = terminal::size()?;
         if setup.capture_keyboard {
             terminal::enable_raw_mode()?;
             ctx.raw_mode = true;
@@ -87,15 +90,15 @@ pub struct Canvas {
 }
 
 impl Canvas {
-    pub fn new(ctx: &TerminalContext) -> Result<Self, io::Error> {
-        let (columns, rows) = terminal::size()?;
+    pub fn new(ctx: &TerminalContext) -> Self {
+        let (columns, rows) = ctx.size;
         let (width, height) = (columns as usize, rows as usize * 2);
         let buffer: Vec<bool> = vec![false; width * height];
-        Ok(Self {
+        Self {
             buffer,
             width,
             height,
-        })
+        }
     }
 }
 
