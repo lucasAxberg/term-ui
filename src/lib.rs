@@ -118,6 +118,20 @@ impl Canvas {
         true
     }
 
+    pub fn clear_pixel(&mut self, x: usize, y: usize) -> bool {
+        let index = self.width * y + x;
+        if let Some(pixel) = self.buffer.get_mut(index) {
+            *pixel = false;
+            // Update the corresponding char position in change buffer
+            if let Some(change) = self.change_buffer.get_mut(self.width * (y / 2) + x) {
+                *change = true;
+            }
+        } else {
+            return false;
+        };
+        true
+    }
+
     fn print_pixel(
         &self,
         ctx: &mut TerminalContext,
