@@ -117,34 +117,30 @@ impl Canvas {
         col: usize,
         row: usize,
     ) -> Result<(), io::Error> {
-        let mut print_top = false;
+        let mut print = false;
         let top_index = self.width * (row * 2) + col;
         if let Some(top_pixel) = self.buffer.get(top_index) {
             if *top_pixel {
-                print_top = true;
+                queue!(ctx.writer, style::SetBackgroundColor(style::Color::White))?;
+                print = true;
+            } else {
+                queue!(ctx.writer, style::SetBackgroundColor(style::Color::Black))?;
             }
         };
-        let mut print_bottom = false;
         let bottom_index = self.width * (row * 2 + 1) + col;
         if let Some(bottom_pixel) = self.buffer.get(bottom_index) {
             if *bottom_pixel {
-                print_bottom = true;
+                print = true;
+                queue!(ctx.writer, style::SetForegroundColor(style::Color::White))?;
+            } else {
+                queue!(ctx.writer, style::SetForegroundColor(style::Color::Black))?;
             }
         };
-        let char = if print_top && !print_bottom {
-            "▀"
-        } else if !print_top && print_bottom {
-            "▄"
-        } else if print_top && print_bottom {
-            "█"
-        } else {
-            " "
-        };
-        if char != " " {
+        if print {
             queue!(
                 ctx.writer,
                 cursor::MoveTo(col as u16, row as u16),
-                style::Print(char)
+                style::Print("▄")
             )?;
         }
         Ok(())
