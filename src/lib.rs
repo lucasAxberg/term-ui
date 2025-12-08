@@ -85,6 +85,7 @@ impl Drop for TerminalContext {
 
 pub struct Canvas {
     buffer: Vec<bool>,
+    change_buffer: Vec<bool>,
     pub height: usize,
     pub width: usize,
 }
@@ -94,8 +95,10 @@ impl Canvas {
         let (columns, rows) = ctx.size;
         let (width, height) = (columns as usize, rows as usize * 2);
         let buffer: Vec<bool> = vec![false; width * height];
+        let change_buffer: Vec<bool> = vec![true; width * rows as usize];
         Self {
             buffer,
+            change_buffer,
             width,
             height,
         }
@@ -105,6 +108,10 @@ impl Canvas {
         let index = self.width * y + x;
         if let Some(pixel) = self.buffer.get_mut(index) {
             *pixel = true;
+            // Update the corresponding char position in change buffer
+            if let Some(change) = self.change_buffer.get_mut(self.width * (y / 2) + x) {
+                *change = true;
+            }
         } else {
             return false;
         };
@@ -117,12 +124,21 @@ impl Canvas {
         col: usize,
         row: usize,
     ) -> Result<(), io::Error> {
-        let mut print = false;
+        // Skip printing if no change
+        let char_index = self.width * row + col;
+        if let Some(change) = self.change_buffer.get(char_index) {
+            if *change == false {
+                return Ok(());
+            }
+        } else {
+            return Ok(());
+        };
+
+        // Set colors and print
         let top_index = self.width * (row * 2) + col;
         if let Some(top_pixel) = self.buffer.get(top_index) {
             if *top_pixel {
                 queue!(ctx.writer, style::SetBackgroundColor(style::Color::White))?;
-                print = true;
             } else {
                 queue!(ctx.writer, style::SetBackgroundColor(style::Color::Black))?;
             }
@@ -130,23 +146,20 @@ impl Canvas {
         let bottom_index = self.width * (row * 2 + 1) + col;
         if let Some(bottom_pixel) = self.buffer.get(bottom_index) {
             if *bottom_pixel {
-                print = true;
                 queue!(ctx.writer, style::SetForegroundColor(style::Color::White))?;
             } else {
                 queue!(ctx.writer, style::SetForegroundColor(style::Color::Black))?;
             }
         };
-        if print {
-            queue!(
-                ctx.writer,
-                cursor::MoveTo(col as u16, row as u16),
-                style::Print("▄")
-            )?;
-        }
+        queue!(
+            ctx.writer,
+            cursor::MoveTo(col as u16, row as u16),
+            style::Print("▄")
+        )?;
         Ok(())
     }
 
-    pub fn draw(&self, ctx: &mut TerminalContext) -> Result<(), io::Error> {
+    pub fn draw(&mut self, ctx: &mut TerminalContext) -> Result<(), io::Error> {
         for row in 0..(self.height / 2) {
             for col in 0..self.width {
                 let _ = self.print_pixel(ctx, col, row);
@@ -154,6 +167,7 @@ impl Canvas {
         }
         queue!(ctx.writer, style::ResetColor)?;
         ctx.writer.flush()?;
+        self.change_buffer = vec![false; (self.height / 2) * self.width];
         Ok(())
     }
 }
