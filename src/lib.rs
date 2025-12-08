@@ -170,6 +170,11 @@ impl Canvas {
         self.change_buffer = vec![false; (self.height / 2) * self.width];
         Ok(())
     }
+
+    pub fn clear(&mut self) -> () {
+        self.buffer = vec![false; self.width * self.height];
+        self.change_buffer = vec![true; self.width * self.height / 2];
+    }
 }
 
 #[cfg(test)]
